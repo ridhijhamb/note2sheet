@@ -4,6 +4,7 @@ import Header from '@/components/Header';
 import FileUpload from '@/components/FileUpload';
 import ProcessingState from '@/components/ProcessingState';
 import ResultView from '@/components/ResultView';
+import ApiKeyInput from '@/components/ApiKeyInput';
 import { processImage, ProcessedResult } from '@/utils/aiService';
 import { cn } from '@/lib/utils';
 
@@ -11,6 +12,7 @@ const Index = () => {
   const [file, setFile] = useState<File | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
   const [result, setResult] = useState<ProcessedResult | null>(null);
+  const [needsApiKey, setNeedsApiKey] = useState(false);
   
   const handleFileSelected = async (selectedFile: File) => {
     setFile(selectedFile);
@@ -22,11 +24,17 @@ const Index = () => {
       setResult(processedResult);
     } catch (error) {
       console.error('Processing error:', error);
-      setResult({
-        id: 'error',
-        status: 'failed',
-        error: 'An unexpected error occurred. Please try again.'
-      });
+      
+      // Check if the error is due to missing API key
+      if (error instanceof Error && error.message.includes('API key')) {
+        setNeedsApiKey(true);
+      } else {
+        setResult({
+          id: 'error',
+          status: 'failed',
+          error: 'An unexpected error occurred. Please try again.'
+        });
+      }
     } finally {
       setIsProcessing(false);
     }
@@ -35,6 +43,14 @@ const Index = () => {
   const handleReset = () => {
     setFile(null);
     setResult(null);
+  };
+  
+  const handleApiKeySet = () => {
+    setNeedsApiKey(false);
+    // If there was a file waiting to be processed, retry
+    if (file) {
+      handleFileSelected(file);
+    }
   };
   
   return (
@@ -49,6 +65,8 @@ const Index = () => {
               Transform your handwritten notes into organized spreadsheets with AI
             </p>
           </div>
+          
+          <ApiKeyInput onApiKeySet={handleApiKeySet} />
           
           <div className={cn(
             "flex flex-col items-center justify-center transition-all duration-500 relative min-h-[400px]",
